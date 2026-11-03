@@ -3,41 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>מסך תצוגה - החלפה אוטומטית</title>
+<title>מסך תצוגה</title>
 <style>
-html, body { margin: 0; padding: 0; background: #111; height: 100%; }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: #1d1d1d; border-bottom: 1px solid #333; font-family: sans-serif; color: #eee; }
-.bar button { font-size: 18px; padding: 10px 22px; border-radius: 8px; border: 2px solid #555; background: #2a2a2a; color: #eee; cursor: pointer; }
-.bar button.active { background: #2f6f4f; border-color: #6fcf97; color: #fff; }
-.status { font-family: sans-serif; font-size: 15px; line-height: 1.5; padding: 6px 12px; background: #161616; color: #bbb; }
-.status b { color: #fff; }
-#frame-holder { position: absolute; top: 112px; left: 0; right: 0; bottom: 28px; background: #000; }
+html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }
+#frame-holder { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; }
 #frame-holder iframe { width: 100%; height: 100%; border: 0; }
-.note { position: fixed; bottom: 0; left: 0; right: 0; font-family: sans-serif; font-size: 13px; color: #888; padding: 4px 12px; background: #161616; }
 </style>
 </head>
 <body>
-<div class="bar">
-  <button id="btn-videos" onclick="setMode('videos')">סרטונים</button>
-  <button id="btn-board" onclick="setMode('board')">לוח</button>
-  <button id="btn-auto" onclick="setMode('auto')">אוטומטי</button>
-  <span id="now-showing"></span>
-</div>
-<div class="status" id="status">טוען זמנים...</div>
 <div id="frame-holder"></div>
-<div class="note">דף בדיקה: לוחצים "לוח", בודקים שהלוח מופיע, ואז "סרטונים" ובודקים שהשידור חוזר להתנגן עם קול בלי לחיצה נוספת.</div>
 <script>
 var JEM_URL = 'https://videos.jem.tv/lobby-broadcast?playlist=lobby-broadcast-il';
 var BOARD_URL = 'https://script.google.com/macros/s/AKfycbyflNueZ5YAizRpb0Wvxd8sSBoyjQKfkGdl-l62bX1lzOpjxMj044cdsGol5jXwnvWU/exec';
 var GEONAME_ID = '294071'; // Netanya
 var BEFORE_MIN = 60;
 var AFTER_MIN = 30;
-var mode = 'auto';
+
+// ?m=board / ?m=videos forces a view (for testing); default is automatic.
+var forced = new URLSearchParams(location.search).get('m');
+var mode = (forced === 'board' || forced === 'videos') ? forced : 'auto';
 var win = null;
 
-function fmt(d) {
-  return d.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 function iso(d) { return d.toISOString().slice(0, 10); }
 
 function loadWindow() {
@@ -87,10 +73,6 @@ function currentShown() {
 
 function render() {
   var shown = currentShown();
-  document.getElementById('btn-videos').className = mode === 'videos' ? 'active' : '';
-  document.getElementById('btn-board').className = mode === 'board' ? 'active' : '';
-  document.getElementById('btn-auto').className = mode === 'auto' ? 'active' : '';
-  document.getElementById('now-showing').innerHTML = 'מוצג כעת: <b>' + (shown === 'board' ? 'לוח מסך התצוגה' : 'שידור JEM') + '</b>';
   var holder = document.getElementById('frame-holder');
   var want = shown === 'board' ? 'board' : 'jem';
   if (holder.getAttribute('data-current') !== want) {
@@ -104,21 +86,11 @@ function render() {
   }
 }
 
-function setMode(m) { mode = m; render(); }
-
 function refreshTimes() {
   loadWindow().then(function (w) {
     win = w;
-    var el = document.getElementById('status');
-    if (!w) { el.textContent = 'לא נמצאו זמנים לשבת הקרובה'; }
-    else {
-      el.innerHTML = 'שבת בנתניה: הדלקת נרות <b>' + fmt(w.candle) + '</b> · צאת שבת <b>' + fmt(w.tzeit) + '</b><br>' +
-        'מעבר ללוח: <b>' + fmt(w.toBoard) + '</b> · חזרה לסרטונים: <b>' + fmt(w.toVideos) + '</b>' +
-        ' (מקור: Hebcal, הדלקה 18 דק׳ לפני השקיעה, צאת 8.5°)';
-    }
     render();
   }).catch(function () {
-    document.getElementById('status').textContent = 'שגיאה בטעינת הזמנים מ-Hebcal';
     render();
   });
 }
